@@ -3,97 +3,101 @@ const empresas = "A46103834 A28003119 A28015865 A80298839 A15075062 A15075062 A2
 const listEmpresas = empresas.split(' ')
 
 
-const scrapingEmpresa = async (empresa, jsonEmpresas, jsonNoEncontradas) => {
 
-  const browser = await puppeteer.launch({ headless: false });
+const main = async () => {
+  const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
 
   await page.goto(`https://www.infoempresas.pro/`);
-  await page.waitForTimeout(3000)
+  await page.waitForTimeout(100)
 
   const element = await page.waitForSelector('#noticeCookiesBtn')
   await element.click()
-  const buscador = await page.waitForSelector('#busqueda')
-  await buscador.click()
-  await page.keyboard.type(empresa)
 
-  await page.keyboard.press('Enter');
-  await page.waitForNavigation({ waitUntil: 'networkidle0' });
-  let hayDatos = (await page.evaluate(() => { return document.querySelector('.div50.bloque .mitad:nth-child(3) .trozosperfil a') })) != null
-  if (!hayDatos) {
+  const scrapingEmpresa = async (empresa, jsonEmpresas, jsonNoEncontradas) => {
 
-    jsonNoEncontradas.push(await empresa)
-    await browser.close()
-    return
-  }
-  try {
-    const persona = await page.evaluate(
-      (empresa) => {
-        let empr = {
-          Name: document.querySelector('.div50.bloque > .titulo').textContent,
-        }
-        let child = 0
-        const nameAtributo=(child,mitad)=>{
-          return document.querySelector(`.div50.bloque > .mitad:nth-child(${mitad}) > div:nth-child(${child})  > h3`).textContent.replace(' ','').replace(':','').normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-        }
-        const sanitizarDatos=(datos)=>{
 
-          return datos.replace('\n','').trim()
+    const buscador = await page.waitForSelector('#busqueda')
+    await buscador.click()
+    await page.keyboard.type(empresa)
 
-        }
-        do {
-          
-          if (document.querySelector(`.div50.bloque > .mitad:nth-child(2) > div:nth-child(${child})  > h3`)) {
-            empr[nameAtributo(child,2)]=sanitizarDatos(document.querySelector(`.div50.bloque > .mitad:nth-child(2) > div:nth-child(${child})  > .trozosperfil`).textContent)
-            
+    await page.keyboard.press('Enter');
+    await page.waitForNavigation({ waitUntil: 'networkidle2' });
+    let hayDatos = (await page.evaluate(() => { return document.querySelector('.div50.bloque .mitad:nth-child(3) .trozosperfil a') })) != null
+    if (!hayDatos) {
+
+      jsonNoEncontradas.push(await empresa)
+      
+      return
+    }
+    try {
+      const persona = await page.evaluate(
+        (empresa) => {
+          let empr = {
+            Name: document.querySelector('.div50.bloque > .titulo').textContent,
           }
-          child++
-        } while (child!=15);
-        
-        child = 0
-        do {
-          
-          if (document.querySelector(`.div50.bloque > .mitad:nth-child(3) > div:nth-child(${child})  > h3`)) {
-            empr[nameAtributo(child,3)]=sanitizarDatos(document.querySelector(`.div50.bloque > .mitad:nth-child(3) > div:nth-child(${child})  > .trozosperfil`).textContent)
-            
+          let child = 0
+          const nameAtributo = (child, mitad) => {
+            return document.querySelector(`.div50.bloque > .mitad:nth-child(${mitad}) > div:nth-child(${child})  > h3`).textContent.replace(' ', '').replace(':', '').normalize("NFD").replace(/[\u0300-\u036f]/g, "")
           }
-          child++
-        } while (child!=15);
-       
-        empr.Name = empr.Name.replace('Información general de ','')
-       
-        return empr
-      }, empresa
-    )
-    
-    jsonEmpresas.push(await persona)
+          const sanitizarDatos = (datos) => {
 
-  } catch (error) {
-    console.log(error)
+            return datos.replace('\n', '').trim()
+
+          }
+          do {
+
+            if (document.querySelector(`.div50.bloque > .mitad:nth-child(2) > div:nth-child(${child})  > h3`)) {
+              empr[nameAtributo(child, 2)] = sanitizarDatos(document.querySelector(`.div50.bloque > .mitad:nth-child(2) > div:nth-child(${child})  > .trozosperfil`).textContent)
+
+            }
+            child++
+          } while (child != 15);
+
+          child = 0
+          do {
+
+            if (document.querySelector(`.div50.bloque > .mitad:nth-child(3) > div:nth-child(${child})  > h3`)) {
+              empr[nameAtributo(child, 3)] = sanitizarDatos(document.querySelector(`.div50.bloque > .mitad:nth-child(3) > div:nth-child(${child})  > .trozosperfil`).textContent)
+
+            }
+            child++
+          } while (child != 15);
+
+          empr.Name = empr.Name.replace('Información general de ', '')
+
+          return empr
+        }, empresa
+      )
+
+      jsonEmpresas.push(await persona)
+
+    } catch (error) {
+      console.log(error)
+
+    }
+
+
+
+
+
+
 
   }
 
 
 
-
-  await browser.close()
-
-
-}
-const main = async () => {
- 
-
- let d = new Date()
+  let d = new Date()
 
   let jsonEmpresas = []
   let jsonNoEncontradas = [];
   for (let index = 0; index < listEmpresas.length; index++) {
     const element = listEmpresas[index];
-    
-    
+
+
     try {
       await scrapingEmpresa(element, jsonEmpresas, jsonNoEncontradas)
-      
+
     } catch (error) {
       console.log(error)
     }
@@ -102,18 +106,19 @@ const main = async () => {
 
 
   }
-  console.log({ EmpresasEncontradas:await jsonEmpresas,EmpresasNoEncontradas:await jsonNoEncontradas,CifEmpresas:listEmpresas})
+
+  console.log({ EmpresasEncontradas: await jsonEmpresas, EmpresasNoEncontradas: await jsonNoEncontradas, CifEmpresas: listEmpresas, lengthEmpresasEncontradas: await jsonEmpresas.length, lengthEmpresasNoEncontradas: await jsonNoEncontradas.length, lenghtlistEmpresas: listEmpresas.length })
 
 
-  
+
   console.log('ha empezado a la hora' + d.getHours() + ':' + d.getMinutes())
   d = new Date()
 
   console.log('ha terminado a la hora' + d.getHours() + ':' + d.getMinutes())
 
 
- 
 
+  await browser.close()
 
 
 
